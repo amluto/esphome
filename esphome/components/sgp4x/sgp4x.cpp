@@ -199,6 +199,9 @@ bool SGP4xComponent::measure_raw_(uint16_t &voc_raw, uint16_t &nox_raw) {
   float humidity = NAN;
   static uint32_t nox_conditioning_start = millis();
 
+  voc_raw_ = NAN;
+  nox_raw_ = NAN;
+
   if (!this->self_test_complete_) {
     ESP_LOGD(TAG, "Self-test not yet complete");
     return false;
@@ -256,7 +259,10 @@ bool SGP4xComponent::measure_raw_(uint16_t &voc_raw, uint16_t &nox_raw) {
     return false;
   }
   voc_raw = raw_data[0];
+  voc_raw_ = voc_raw;
   nox_raw = raw_data[1];  // either 0 or the measured NOx ticks
+  if (command == SGP41_CMD_MEASURE_RAW)
+    nox_raw_ = nox_raw;
   return true;
 }
 
@@ -290,6 +296,9 @@ void SGP4xComponent::update() {
     } else {
       this->status_set_warning();
     }
+    if (this->voc_raw_sensor_) {
+      this->voc_raw_sensor_->publish_state(this->voc_raw_);
+    }
   }
   if (this->nox_sensor_) {
     if (this->nox_index_ != UINT16_MAX) {
@@ -297,6 +306,9 @@ void SGP4xComponent::update() {
       this->nox_sensor_->publish_state(this->nox_index_);
     } else {
       this->status_set_warning();
+    }
+    if (this->nox_raw_sensor_) {
+      this->nox_raw_sensor_->publish_state(this->nox_raw_);
     }
   }
 }

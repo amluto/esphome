@@ -31,8 +31,10 @@ CONF_INDEX_OFFSET = "index_offset"
 CONF_LEARNING_TIME_GAIN_HOURS = "learning_time_gain_hours"
 CONF_LEARNING_TIME_OFFSET_HOURS = "learning_time_offset_hours"
 CONF_NOX = "nox"
+CONF_NOX_RAW = "nox_raw"
 CONF_STD_INITIAL = "std_initial"
 CONF_VOC = "voc"
+CONF_VOC_RAW = "voc_raw"
 CONF_VOC_BASELINE = "voc_baseline"
 
 
@@ -40,6 +42,14 @@ def validate_sensors(config):
     if CONF_VOC not in config and CONF_NOX not in config:
         raise cv.Invalid(
             f"At least one sensor is required. Define {CONF_VOC} and/or {CONF_NOX}"
+        )
+    if CONF_VOC_RAW in config and CONF_VOC not in config:
+        raise cv.Invalid(
+            f"{CONF_VOC_RAW} is not currently supported without also enabling {CONF_VOC}"
+        )
+    if CONF_NOX_RAW in config and CONF_NOX not in config:
+        raise cv.Invalid(
+            f"{CONF_VOC_RAW} is not currently supported without also enabling {CONF_VOC}"
         )
     return config
 
@@ -69,12 +79,24 @@ CONFIG_SCHEMA = cv.All(
                 device_class=DEVICE_CLASS_AQI,
                 state_class=STATE_CLASS_MEASUREMENT,
             ).extend(GAS_SENSOR),
+            cv.Optional(CONF_VOC_RAW): sensor.sensor_schema(
+                icon=ICON_RADIATOR,
+                accuracy_decimals=0,
+                device_class=DEVICE_CLASS_AQI,
+                state_class=STATE_CLASS_MEASUREMENT,
+            ),
             cv.Optional(CONF_NOX): sensor.sensor_schema(
                 icon=ICON_RADIATOR,
                 accuracy_decimals=0,
                 device_class=DEVICE_CLASS_AQI,
                 state_class=STATE_CLASS_MEASUREMENT,
             ).extend(GAS_SENSOR),
+            cv.Optional(CONF_NOX_RAW): sensor.sensor_schema(
+                icon=ICON_RADIATOR,
+                accuracy_decimals=0,
+                device_class=DEVICE_CLASS_AQI,
+                state_class=STATE_CLASS_MEASUREMENT,
+            ),
             cv.Optional(CONF_STORE_BASELINE, default=True): cv.boolean,
             cv.Optional(CONF_VOC_BASELINE): cv.hex_uint16_t,
             cv.Optional(CONF_COMPENSATION): cv.Schema(
@@ -111,6 +133,9 @@ async def to_code(config):
     if CONF_VOC in config:
         sens = await sensor.new_sensor(config[CONF_VOC])
         cg.add(var.set_voc_sensor(sens))
+        if CONF_VOC_RAW in config:
+            sens_raw = await sensor.new_sensor(config[CONF_VOC_RAW])
+            cg.add(var.set_voc_raw_sensor(sens_raw))
         if CONF_ALGORITHM_TUNING in config[CONF_VOC]:
             cfg = config[CONF_VOC][CONF_ALGORITHM_TUNING]
             cg.add(
@@ -127,6 +152,9 @@ async def to_code(config):
     if CONF_NOX in config:
         sens = await sensor.new_sensor(config[CONF_NOX])
         cg.add(var.set_nox_sensor(sens))
+        if CONF_NOX_RAW in config:
+            sens_raw = await sensor.new_sensor(config[CONF_NOX_RAW])
+            cg.add(var.set_nox_raw_sensor(sens_raw))
         if CONF_ALGORITHM_TUNING in config[CONF_NOX]:
             cfg = config[CONF_NOX][CONF_ALGORITHM_TUNING]
             cg.add(
